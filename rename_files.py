@@ -1,6 +1,7 @@
 # python standard library
 import os 
 import time
+import shutil
 
 # from watchdog.observers import Observer
 # from watchdog.events import PatternMatchingEventHandler
@@ -8,17 +9,19 @@ import time
 # make this a function
 # replace this with the windows path
 directory_path ="/home/mo/Magic Folder"
+directory_renamed_files = "/home/mo/Rename Directory"
+
 #we shall store all the file names in this list
 
 from os import listdir
 from os.path import isfile, join
 
 #function to return files in a directory
-def file_in_directory(my_dir: str):
+def get_files_in_directory(my_dir: str):
     only_files = [f for f in listdir(my_dir) if isfile(join(my_dir, f))]
     return(only_files)
 
-# os.walk?
+# os.walk? 
 # run this is in a while loop -  benchmark resource comsumption while idle
 
 file_list = []
@@ -38,35 +41,54 @@ for name in file_list:
 
 # check for duplicates
 # get most recent addition to the folder
-    
+
+# using this to compare the two lists. 
+# If the file is in the new list but not in the old list, it is a new file
 def listComparison(OriginalList: list, NewList: list):
     differencesList = [x for x in NewList if x not in OriginalList] #Note if files get deleted, this will not highlight them
     return(differencesList)
 
 
-
 def fileWatcher(my_dir: str, pollTime: int):
     while True:
         if 'watching' not in locals(): #Check if this is the first time the function has run
-            previousFileList = file_in_directory(directory_path)
+            previousFileList = get_files_in_directory(directory_renamed_files)
             watching = 1
             print('First Time')
             print(previousFileList)
         
         time.sleep(pollTime)
         
-        newFileList = file_in_directory(directory_path)
+        newFileList = get_files_in_directory(directory_renamed_files)
         
         fileDiff = listComparison(previousFileList, newFileList)
         
         previousFileList = newFileList
         if len(fileDiff) == 0: continue
         # doThingsWithNewFiles(fileDiff)
+        # compare file
         print(fileDiff)
 
+        # if the new file name matches the old file name, rename the file
+        if fileDiff in previousFileList:
+            extension = '- 001'
+            print('File Renamed')
+            # rename the file
+            os.rename(fileDiff, fileDiff + f'{extension}')
+            # print('File Renamed')
+
+
+
+# we could use two directories. 
+# one to move the file into - one to check if the name of the file is already there
+
+# get list from rename directory - get current file in magic folder
+
+
+# now we have two processes.
 
 if __name__ == "__main__":
-    fileWatcher(directory_path, 10)
+    fileWatcher(directory_path, 1)
 
 
 # read folder name from file path
