@@ -2,6 +2,7 @@
 import os 
 import time
 import shutil
+import re
 
 # from watchdog.observers import Observer
 # from watchdog.events import PatternMatchingEventHandler
@@ -9,11 +10,11 @@ import shutil
 # make this a function
 # replace this with the windows path
 magic_directory_path ="/home/mo/Magic Folder"
-directory_renamed_files = "/home/mo/Rename Directory"
+target_directory = "/home/mo/Rename Directory"
 
 #we shall store all the file names in this list
 
-from os import listdir
+from os import listdir, rename
 from os.path import isfile, join
 
 #function to return files in a directory
@@ -48,12 +49,40 @@ def listComparison(OriginalList: list, NewList: list):
     differencesList = [x for x in NewList if x not in OriginalList] #Note if files get deleted, this will not highlight them
     return(differencesList)
 
+# check if the file is in the target directory
+# maybe not be a file
+def rename_files(file: str, target_list: list):
+    # s = 'Name(something)'
+    
+    # whats next? 
+    # for file in file_list:
+    if file in target_list:
+        # if split the file by the target
+        if '- (' in file:
+            print('File with this name already exists')
+            # rename the file, increment the number
+            number_in_parens = re.search('\(([^)]+)', file).group(1)
+            # instead of renaming the file - just rename the file name - then move the file
+            # os.rename(file + f'{int(number_in_parens) + 1}')
+            new_number = str(int(number_in_parens) + 1)
+            file = file.split('- (')[0] + f'- ({new_number})'
+            
+            # print(file)
+            rename_files(file , target_list)
+
+    else:
+        print(file)
+        shutil.move(magic_directory_path + f"/{file}", target_directory)
+        print('File moved to target directory')
+
+
+
 
 # watch file for changes
 def fileWatcher(my_dir: str, pollTime: int):
     while True:
         if 'watching' not in locals(): #Check if this is the first time the function has run
-            previousFileList = get_files_in_directory(directory_renamed_files)
+            previousFileList = get_files_in_directory(target_directory)
             watching = 1
             print('First Time')
             print(previousFileList)
@@ -61,24 +90,37 @@ def fileWatcher(my_dir: str, pollTime: int):
         time.sleep(pollTime)
 
         # get list of files from rename directory
-        rename_file_list = get_files_in_directory(directory_renamed_files)
+        rename_file_list = get_files_in_directory(target_directory)
         magic_file_list = get_files_in_directory(magic_directory_path)
         # print(rename_file_list)
 
+        file_name = magic_file_list[0]
+        # if previous file list is empty
+        # move file from magic directory to rename directory
         
         # comapre lists to find the new file...
-        fileDiff = listComparison(rename_file_list, magic_file_list)
-        print(fileDiff)
+        file_diff = listComparison(rename_file_list, magic_file_list)
         
-        if fileDiff not in rename_file_list:    
-            shutil.move(magic_directory_path + f"/{fileDiff}", directory_renamed_files)
-            print('File moved')
-        else:
-            continue
+        # if multiple files are added,, loop through and move to rename directory
+        # recursively rename and move files
         
+        rename_files(file_name, rename_file_list)
+            
+
+                    
+        
+            
+        
+        
+        
+        
+
+        
+        
+
         
         # previousFileList = newFileList
-        # if len(fileDiff) == 0: continue
+        
         # doThingsWithNewFiles(fileDiff)
         # compare file
         # print(fileDiff)
