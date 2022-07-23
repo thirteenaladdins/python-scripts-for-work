@@ -79,6 +79,21 @@ def move_file_to_target(file_name: str, new_file_name: str, current_directory: s
 def fileWatcher(my_dir: str, pollTime: int):
     while True:
         if 'watching' not in locals(): #Check if this is the first time the function has run
+            if os.path.exists(magic_directory): 
+                pass
+            
+            else: 
+                print('Magic folder does not exist... creating...')
+                os.mkdir(magic_directory)
+
+            if os.path.exists(target_directory): 
+                continue
+
+            else:
+                print('Target directory does not exist... creating...')
+                os.mkdir(target_directory)
+
+
             previousFileList = get_files_in_directory(target_directory)
             watching = 1
             print('First Time')
@@ -86,10 +101,19 @@ def fileWatcher(my_dir: str, pollTime: int):
         
         time.sleep(pollTime)
 
-        if os.path.exists(magic_directory): continue
-        
+        if os.path.exists(magic_directory): 
+            continue
+            
         else: 
+            print('Magic folder does not exist... creating...')
             os.mkdir(magic_directory)
+
+        if os.path.exists(target_directory): 
+            continue
+
+        else:
+            print('Target directory does not exist... creating...')
+            os.mkdir(target_directory)
 
         # get list of files from rename directory
         target_directory_file_list = get_files_in_directory(target_directory)
@@ -107,9 +131,9 @@ def fileWatcher(my_dir: str, pollTime: int):
 
         # generate new name for file
         new_file_name = rename_files(file_name, target_directory_file_list)
-        print(new_file_name)
+        # print(new_file_name)
 
-        print(file_name, new_file_name)
+        # print(file_name, new_file_name)
         # move file to target directory
         move_file_to_target(file_name, new_file_name, magic_directory, target_directory,)
 
