@@ -9,7 +9,7 @@ import re
 
 # make this a function
 # replace this with the windows path
-magic_directory_path ="/home/mo/Magic Folder"
+magic_directory ="/home/mo/Magic Folder"
 target_directory = "/home/mo/Rename Directory"
 
 #we shall store all the file names in this list
@@ -34,48 +34,45 @@ def list_all_files(path):
             file_list.append(os.path.join(root,file))
     return file_list
 
-file_list = list_all_files(magic_directory_path)
-
-
-for name in file_list:
-    print(name)
-
-# check for duplicates
-# get most recent addition to the folder
-
 # using this to compare the two lists. 
 # If the file is in the new list but not in the old list, it is a new file
 def listComparison(OriginalList: list, NewList: list):
     differencesList = [x for x in NewList if x not in OriginalList] #Note if files get deleted, this will not highlight them
     return(differencesList)
 
-# check if the file is in the target directory
-# maybe not be a file
+# check if the new file is in the target directory
+# if it is, rename the file
 def rename_files(file: str, target_list: list):
-    # s = 'Name(something)'
-    
-    # whats next? 
-    # for file in file_list:
     if file in target_list:
-        # if split the file by the target
+        print('File with this name already exists')
         if '- (' in file:
-            print('File with this name already exists')
             # rename the file, increment the number
             number_in_parens = re.search('\(([^)]+)', file).group(1)
             # instead of renaming the file - just rename the file name - then move the file
             # os.rename(file + f'{int(number_in_parens) + 1}')
+
             new_number = str(int(number_in_parens) + 1)
-            file = file.split('- (')[0] + f'- ({new_number})'
-            
-            # print(file)
-            rename_files(file , target_list)
+            file = file.split('- (')[0] + f' - ({new_number.zfill(3)})'
+            return rename_files(file , target_list)
+        
+        else: 
+            return rename_files(file + ' - (001)', target_list)
 
     else:
-        print(file)
-        shutil.move(magic_directory_path + f"/{file}", target_directory)
+        # here we return the original file if no changes 
+        # have been made or the new file name
+        return file
+
+
+def move_file_to_target(file_name: str, new_file_name: str, current_directory: str, target_directory: str):
+    if file_name != new_file_name:
+        os.rename(current_directory + '/' + file_name, current_directory + '/' + new_file_name)
+        shutil.move(magic_directory + f"/{new_file_name}", target_directory)
+        print("File renamed")
+    
+    else: 
+        shutil.move(magic_directory + f"/{file_name}", target_directory)
         print('File moved to target directory')
-
-
 
 
 # watch file for changes
@@ -89,74 +86,37 @@ def fileWatcher(my_dir: str, pollTime: int):
         
         time.sleep(pollTime)
 
+        if os.path.exists(magic_directory): continue
+        
+        else: 
+            os.mkdir(magic_directory)
+
         # get list of files from rename directory
-        rename_file_list = get_files_in_directory(target_directory)
-        magic_file_list = get_files_in_directory(magic_directory_path)
-        # print(rename_file_list)
+        target_directory_file_list = get_files_in_directory(target_directory)
+        magic_file_list = get_files_in_directory(magic_directory)
 
-        file_name = magic_file_list[0]
-        # if previous file list is empty
-        # move file from magic directory to rename directory
+        # compare lists to find the new file
+        # file_diff = listComparison(target_directory_file_list, magic_file_list)
         
-        # comapre lists to find the new file...
-        file_diff = listComparison(rename_file_list, magic_file_list)
         
-        # if multiple files are added,, loop through and move to rename directory
-        # recursively rename and move files
+        if len(magic_file_list) > 0:
+            file_name = magic_file_list[0]
         
-        rename_files(file_name, rename_file_list)
-            
+        else: 
+            continue
 
-                    
-        
-            
-        
-        
-        
-        
+        # generate new name for file
+        new_file_name = rename_files(file_name, target_directory_file_list)
+        print(new_file_name)
+
+        print(file_name, new_file_name)
+        # move file to target directory
+        move_file_to_target(file_name, new_file_name, magic_directory, target_directory,)
 
         
+# TODO get a file list from the current directory
+# iterate through the list, work on multiple files at a time instead of one per second
         
-
-        
-        # previousFileList = newFileList
-        
-        # doThingsWithNewFiles(fileDiff)
-        # compare file
-        # print(fileDiff)
-
-        # if the new file name matches the old file name, rename the file
-        # if fileDiff in previousFileList:
-        #     extension = '- 001'
-        #     print('File Renamed')
-        #     # rename the file
-        #     os.rename(fileDiff, fileDiff + f'{extension}')
-        #     # print('File Renamed')
-
-
-
-# we could use two directories. 
-# one to move the file into - one to check if the name of the file is already there
-
-# get list from rename directory - get current file in magic folder
-
-
-# now we have two processes.
 
 if __name__ == "__main__":
-    fileWatcher(magic_directory_path, 1)
-
-
-# read folder name from file path
-# get all files in directory - put file names into list - or tuple?
-# get file name from newly added file
-# compare file names in list of files
-
-# if exists - add - (001) to file 
-# check 
-# if 001 exists add - (002)
-
-# check file name - 
-
-
-
+    fileWatcher(magic_directory, 1)
