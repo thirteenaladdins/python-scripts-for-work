@@ -87,8 +87,8 @@ def fileWatcher(my_dir: str, pollTime: int):
                 os.mkdir(magic_directory)
 
             if os.path.exists(target_directory): 
-                continue
-
+                pass
+            
             else:
                 print('Target directory does not exist... creating...')
                 os.mkdir(target_directory)
@@ -102,14 +102,14 @@ def fileWatcher(my_dir: str, pollTime: int):
         time.sleep(pollTime)
 
         if os.path.exists(magic_directory): 
-            continue
+            pass
             
         else: 
             print('Magic folder does not exist... creating...')
             os.mkdir(magic_directory)
 
         if os.path.exists(target_directory): 
-            continue
+            pass
 
         else:
             print('Target directory does not exist... creating...')
