@@ -13,8 +13,20 @@ import re
 # replace this with the windows path 
 #TODO the path of the current directory
 
-magic_directory ="C:/Users/amerm/Desktop/Magic Folder"
-target_directory = "C:/Users/amerm/Desktop/Rename Directory"
+from sys import platform
+if platform == "linux" or platform == "linux2":
+    # linux
+    pass
+elif platform == "darwin":
+    # OS X
+    pass
+elif platform == "win32":
+    # Windows
+    user_name = os.getenv('username')
+    magic_directory = f"C:/Users/{user_name}/Desktop/Magic Folder"
+    target_directory = f"C:/Users/{user_name}/Desktop/Rename Directory"
+
+
 
 #we shall store all the file names in this list
 
@@ -54,7 +66,7 @@ def rename_files(file: str, target_list: list):
         print('File with this name already exists')
         if '- (' in file_name:
             # rename the file, increment the number
-            number_in_parens = re.search('\(([^)]+)', file_name).group(1)
+            number_in_parens = re.search('- \(([^)]+)', file_name).group(1)
             # instead of renaming the file - just rename the file name - then move the file
             
             new_number = str(int(number_in_parens) + 1)
