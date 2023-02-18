@@ -56,6 +56,9 @@ def draw_image(canvas, image_data, x, y, width=None, height=None):
     canvas.drawImage(ImageReader(image_reader), x / 2, y - 142, 
     width=img_width / 2.2, height=img_height / 2.2, mask='auto')
 
+
+
+
 # Define the footer and header text
 footer_text = "This is a footer"
 # header_text = "This is a header"
