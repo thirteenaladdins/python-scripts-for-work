@@ -23,40 +23,33 @@ reader = PdfReader(input_file)
 # Create a PdfFileWriter object to write the output file
 writer = PdfWriter()
 
+# input image file, then convert, then import into this script?
 with open('output.txt', 'r') as f:
     encoded_image_data = f.read()
     # add prefix to image
     encoded_image_data = 'data:image/png;base64,' + encoded_image_data
-
-# with open('svgviewer-output.svg', 'rb') as f:
-#     svg_data = f.read()    
     
-# def draw_image_2(canvas, image_data, x, y):
-#     # def draw_image(canvas, image_data, x, y, width, height):
-#     decoded_image_data = base64.b64decode(image_data.split(',')[1])
-#     image_reader = ImageReader(io.BytesIO(decoded_image_data))
-#     # img_width, img_height = image.size
-
-#     img_width, img_height = image_reader.getSize()
-
-#     # Draw the image on the PDF page with the same size as it is encoded
-#     canvas.drawImage(ImageReader(image_reader), x / 2, y - img_height - 24, width=img_width, height=img_height, mask='auto')
-#     # canvas.drawImage(image_reader, x, y, width=width, height=height, preserveAspectRatio=True)
-
 def draw_image(canvas, image_data, x, y, width=None, height=None):
     decoded_image_data = base64.b64decode(image_data.split(',')[1])
     image_reader = ImageReader(io.BytesIO(decoded_image_data))
     img_width, img_height = image_reader.getSize()
     aspect_ratio = img_width / img_height
+
     if width is not None and height is not None:
         if width / height > aspect_ratio:
             width = height * aspect_ratio
+            print(width)
         else:
             height = width / aspect_ratio
-    canvas.drawImage(ImageReader(image_reader), x / 2, y - 142, 
-    width=img_width / 2.2, height=img_height / 2.2, mask='auto')
+            print(height)
+    
+    center_x = page_width / 2
 
-
+    # Calculate the position to place the image to center it on the page
+    x = center_x - (width / 2)
+    
+    # canvas.drawImage(ImageReader(image_reader), center_x, y - 142, width=width , height=height, mask='auto')
+    canvas.drawImage(ImageReader(image_reader), x, y - 130, width=width, height=height, mask='auto')
 
 
 # Define the footer and header text
@@ -79,7 +72,9 @@ for page_num in range(len(reader.pages)):
     canvas_obj.drawCentredString(page_width / 2, 30, footer_text)
 
     # draw_image(canvas_obj, encoded_image_data, page_width / 2, page_height)
-    draw_image(canvas_obj, encoded_image_data, page_width / 2, page_height)
+
+    # page_width and page_height are being passed in here
+    draw_image(canvas_obj, encoded_image_data, page_width, page_height, 220, 180)
     
     # Save the canvas object
     canvas_obj.save()
@@ -100,3 +95,8 @@ with open(output_file, "wb") as out:
 
 # Print a success message
 print(f"Successfully created {output_file} with added footer and header.")
+
+# TODO: add error handling
+# add footer
+# deploy using flask
+
