@@ -2,8 +2,7 @@
 import sys
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, A4
-from PIL import Image
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader 
 import io
 
@@ -18,16 +17,24 @@ if len(sys.argv) < 2:
 input_file = sys.argv[1]
 
 # Create a PdfFileReader object to read the input file
-reader = PdfReader(input_file)
+try:
+    reader = PdfReader(input_file)
+except Exception as e:
+    print(f"Error: {e}")
+    sys.exit(1)
 
 # Create a PdfFileWriter object to write the output file
 writer = PdfWriter()
 
 # input image file, then convert, then import into this script?
-with open('output.txt', 'r') as f:
-    encoded_image_data = f.read()
-    # add prefix to image
-    encoded_image_data = 'data:image/png;base64,' + encoded_image_data
+try:
+    with open('output.txt', 'r') as f:
+        encoded_image_data = f.read()
+        # add prefix to image
+        encoded_image_data = 'data:image/png;base64,' + encoded_image_data
+except Exception as e:
+    print(f"Error: {e}")
+    sys.exit(1)
     
 def draw_image(canvas, image_data, x, y, width=None, height=None):
     decoded_image_data = base64.b64decode(image_data.split(',')[1])
@@ -48,11 +55,11 @@ def draw_image(canvas, image_data, x, y, width=None, height=None):
     # Calculate the position to place the image to center it on the page
     x = center_x - (width / 2)
     
-    # canvas.drawImage(ImageReader(image_reader), center_x, y - 142, width=width , height=height, mask='auto')
     canvas.drawImage(ImageReader(image_reader), x, y - 130, width=width, height=height, mask='auto')
 
 
 # Define the footer and header text
+# TODO: add standard footer
 footer_text = "This is a footer"
 # header_text = "This is a header"
 
@@ -87,16 +94,17 @@ for page_num in range(len(reader.pages)):
     writer.add_page(page)
 
 # Create the output file name
+# Create the output file name
 output_file = input_file[:-4] + "_modified.pdf"
 
-# Write the output file
-with open(output_file, "wb") as out:
-    writer.write(out)
+try:
+    # Write the output file
+    with open(output_file, "wb") as out:
+        writer.write(out)
 
-# Print a success message
-print(f"Successfully created {output_file} with added footer and header.")
-
-# TODO: add error handling
-# add footer
-# deploy using flask
+    # Print a success message
+    print(f"Successfully created {output_file} with added footer and header.")
+except Exception as e:
+    # Print an error message if an exception occurs
+    print(f"Error occurred while creating {output_file}: {str(e)}")
 
