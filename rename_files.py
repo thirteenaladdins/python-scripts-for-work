@@ -1,21 +1,27 @@
 # python standard library
 import os 
+from os import listdir, rename
+from os.path import isfile, join
 import time
 import shutil
 import re
+from sys import platform
 
 # from watchdog.observers import Observer
 # from watchdog.events import PatternMatchingEventHandler
 
-# make this a function
-# replace this with the windows path
-magic_directory ="/home/mo/Magic Folder"
-target_directory = "/home/mo/Rename Directory"
+# this will create the folders where the python script is located
+if platform == "linux" or platform == "linux2": # linux
+    magic_directory ="/Magic Folder"
+    target_directory = "/Rename Directory"
+elif platform == "darwin":
+    # OS X
+    pass
+elif platform == "win32":
+    # Windows...
+    magic_directory = "\New folder"
+    target_directory = "\Rename Directory"
 
-#we shall store all the file names in this list
-
-from os import listdir, rename
-from os.path import isfile, join
 
 #function to return files in a directory
 def get_files_in_directory(my_dir: str):
@@ -140,7 +146,7 @@ def fileWatcher(my_dir: str, pollTime: int):
         
 # TODO get a file list from the current directory
 # iterate through the list, work on multiple files at a time instead of one per second
-        
+
 
 if __name__ == "__main__":
     fileWatcher(magic_directory, 1)
