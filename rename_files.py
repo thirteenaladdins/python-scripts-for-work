@@ -7,9 +7,31 @@ import shutil
 import re
 from sys import platform
 
+# C88REPORT-IMPORT DECLARATION (C88)
+
 # from watchdog.observers import Observer
 # from watchdog.events import PatternMatchingEventHandler
 
+# make this a function
+# replace this with the windows path 
+#TODO the path of the current directory
+
+from sys import platform
+if platform == "linux" or platform == "linux2":
+    # linux
+    pass
+elif platform == "darwin":
+    # OS X
+    pass
+elif platform == "win32":
+    # Windows
+    user_name = os.getenv('username')
+    magic_directory = f"C:/Users/{user_name}/Desktop/Magic Folder"
+    target_directory = f"C:/Users/{user_name}/Desktop/Rename Directory"
+
+
+
+#we shall store all the file names in this list
 # this will create the folders where the python script is located
 if platform == "linux" or platform == "linux2": # linux
     magic_directory ="/Magic Folder"
@@ -49,20 +71,22 @@ def listComparison(OriginalList: list, NewList: list):
 # check if the new file is in the target directory
 # if it is, rename the file
 def rename_files(file: str, target_list: list):
+    # TODO - what if file doesn't have ext?
+    file_name, file_ext = os.path.splitext(file)
+    
     if file in target_list:
         print('File with this name already exists')
-        if '- (' in file:
+        if '- (' in file_name:
             # rename the file, increment the number
-            number_in_parens = re.search('\(([^)]+)', file).group(1)
+            number_in_parens = re.search('- \(([^)]+)', file_name).group(1)
             # instead of renaming the file - just rename the file name - then move the file
-            # os.rename(file + f'{int(number_in_parens) + 1}')
-
+            
             new_number = str(int(number_in_parens) + 1)
-            file = file.split('- (')[0] + f' - ({new_number.zfill(3)})'
-            return rename_files(file , target_list)
+            file = file.split('- (')[0] + f'- ({new_number.zfill(3)}){file_ext}'
+            return rename_files(file, target_list)
         
         else: 
-            return rename_files(file + ' - (001)', target_list)
+            return rename_files(file_name + ' - (001)' + file_ext, target_list)
 
     else:
         # here we return the original file if no changes 
