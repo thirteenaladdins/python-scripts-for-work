@@ -1,93 +1,168 @@
-# there are two things, first we need to fetch the appropriate columns
-# this maps the data and formats the information into the appropriate format, 
-# we can use the CCT json data structure to 
+from PyInquirer import prompt
+import pandas as pd
+import sys
 
-# this might have to be moved out of this folder, but I'll keep it here for now
+# this should be the interface, and then the hb fuller processor should be a separate file
 
-# from the top - input the file
-# select the sheet
-# then process the file -
-# submit the file to SFTP server
+# this preprocessor converts to the json file header
+# so it creates a dataframe with the specified headers
+# then the map to cct json file processes
 
-# this is for 912 and 914
-# in the BIS mapping then process the file based on necessary parameters
-# quantity rounded up to the nearest integer
-# addresses on the item level
-# addresses are added based on the plant name
+# Select relevant columns
+# item data
+selected_columns = ["Plant Name", "Currency", "General description", "Qty Shipped Net Weight KG",
+                    "Sales Order Nbr", "Number Pieces", "Date Creation Record", "Customs Value",
+                    "10-Digit UK Import", "Country Of Origin", "EORI Nbr"]
 
-# information we need from the file
-# can we send addresses at the item level here?
-# the rest can be added in the mapping
-# additional information can be supplied in the json - such as Y CLE etc
+# additional header data
+# totalPackages_SAD06 - sum of total packages
 
-# turn this into a command line script
+# #### Mandatory Header Data
 
+# interfaceVersion
+# customerIdCCT
+# customerEmail
+# customerReference
+# deliveryTerm_SAD20
+# deliveryTermPlace_SAD20
+# countryOfExport_SAD15
+# countryOfDestination_SAD17
+
+# role
+# eoriNo
+# vatNo
+# customerAddressNo
+# mdmAddressNo
+# invoicingAddressNo
+# accountNo
+# name1
+# name2
+# name3
+# street
+# houseNo
+# zipcode
+# city
+# country
+# province
+# postofficeBox
+# traderid
+# unlocode
+# reference
+# contactName
+# email
+# phone
+
+# "sequentialNo_SAD32": 6,
+# "invoiceNo": "SI-A014216",
+# "itemNo": "TG7X50610/BE/08A",
+# "customerHSCode_SAD33ex": "87163950",
+# "noOfPackages_SAD31": 1,
+# "grossMass_SAD35": 996.43,
+# "netMass_SAD38": 860.0,
+# "itemPrice_SAD42": 9263.0,
+# "goodsValueCurrency": "EUR",
+# "goodsDescription_SAD31": "HBX506 RIGHT HAND:",
+# "countryOfOrigin_SAD34": "GB"
+
+# plant name - this is mapped to address column data
+
+# Position level
+
+# Plant Name" - address data
+
+# "sequentialNo_SAD32": 6,
+# Currency" - goodsValueCurrency
+# "General description" - goodsDescription_SAD31
+# "Qty Shipped Net Weight KG" - netMass_SAD38, grossMass_SAD35
+# "Sales Order Nbr" - invoiceNo
+# "Number Pieces" - noOfPackages_SAD31
+# "Date Creation Record" - ???
+# "Customs Value" - itemPrice_SAD42
+# "10-Digit UK Import"- customerHSCode_SAD33ex
+# "Country Of Origin" - countryOfOrigin_SAD34
+
+# "EORI Nbr - not mapped anywhere. - but we should check that the information on the
+# sheet we're working with corresponds to the correct information
+
+# there is one of these per item because it's EIDR
+# to the position data?
+
+# this is optional anyway - map one per line item, then match the data
+#### Invoice data ####
+# invoiceNo - Sales Order Nbr
+# invoiceDate - Date Creation Record
+# invoiceReference -
+# invoiceAmount - Customs Value
+# invoiceCurrency - Currency
+
+
+# map this data to a json file?
+#
+
+# create table here
 address_data_table = {
     "Blois": ["FRHBFBLO01", "HB FULLER", "ALLEE ROBERT SCHUMAN C.S 1308", "BLOIS", "41013", "FR"],
     "Lueneburg": ["DEHBFLUE01", "H.B. Fuller Deutschland GmbH", "An der Roten Bleiche 2-3", "Lueneburg", "21335", "DE"],
     "Pianezze": ["ITHBFPIA01", "HB Fuller", "VIA DEL INDUSTRIA 8", "PIANEZZE", "36060", "IT"],
     "Nienburg": ["DEHBFNIE01", "HB FULLER DEUTSCHLAND PRODUKTIONS", "HENRIETTENSTRASSE 32", "NIENBURG", "31582", "DE"],
-    "Mindelo": ["PTHBFMIN01", "HB FULLER", "Estrada Nacional 13/km16", "Mindelo", "4486-851", "PT"]
-};
+    "Mindelo": ["PTHBFMIN01", "HB FULLER", "Estrada Nacional 13/km16", "Mindelo", "4486-851", "PT"],
+}
 
-# HB Fuller specific columns
-# fetch these columns, map them to the correct part of the data structure
-selected_columns = ["Plant Name", "Currency", "General description", "Qty Shipped Net Weight KG", 
-"Sales Order Nbr", "Number Pieces", "Date Creation Record", "Customs Value", 
-"10-Digit UK Import", "Country Of Origin", "EORI Nbr"
-];
 
-# read workbook - 
-# output sheet names
-# select sheets
+def add_address_data(row):
+    # check if address is in table
+    # "Plant Name"
+    address_rows = {}
+    plant_names = ["Blois", "Lueneburg", "Pianezze", "Nienburg", "Mindelo"]
 
-# then process 
-# output to command line
+    for name in plant_names:
+        if name in row["Plant Name"]:
+            data = address_data_table[name]
 
-import pandas as pd
-import openpyxl as openpyxl
-import sys
-import curses
+            address_rows = {
+                "Exporter Name": data[1],
+                "Exporter Street":  data[2],
+                "Exporter City": data[3],
+                "Exporter PostCode": data[4],
+                "Exporter Country": data[5],
+                "Exporter ShortCode": data[0],
+                "Dispatch Country": data[5],
+                "Destination Country": 'GB',
+            }
 
-# df = pd.read_excel(input_file, dtype=str)
-# valid_row_threshold = 10
-# df_cleaned = df.dropna(thresh=valid_row_threshold)
+    return address_rows
 
-# df = pd.read_excel(excel_workbook)
 
 def get_worksheets(input_file):
-    # Get sheet names
     excel_file = pd.ExcelFile(input_file)
-    sheet_names = excel_file.sheet_names
-    return sheet_names
+    return excel_file.sheet_names
 
-def display_menu(workbook):
-    for name in workbook:
-        print(name)
 
-def get_user_selection():
-    return input("Please select a worksheet: ")
+def read_excel(file_path, sheet_name=None):
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    return df
 
-# do we run the validation script and check that the information has been formatted correctly?
-# probably no point starting from scratch as the work has already been done
-# but it will be useful for me to do it again so I can understand it better
-# we need the header data as well. 
 
-# CCT Customer ID
+def main(input_file):
+    menu = get_worksheets(input_file)
+    questions = [
+        {
+            'type': 'list',
+            'name': 'sheet',
+            'message': 'Select a sheet:',
+            'choices': menu
+        }
+    ]
+    answers = prompt(questions)
+    df = read_excel(input_file, answers['sheet'])
+    print(df.head())  # Now this line will print to the terminal normally
 
-def main():
-    if len(sys.argv) != 2:
-        print("format: python hb_fuller_preprocessor.py <filename>")
-        sys.exit(1)
-
-    else:
-        excel_file = sys.argv[1]
-
-    # input_file = sys.argv[1]
-    sheet_names = get_worksheets(excel_file)
-    curses.initscr()
-
+    # process the file here
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) != 2:
+        print("format: python hb_fuller_preprocessor <excel workbook>")
+        sys.exit(1)
+
+    main(sys.argv[1])
