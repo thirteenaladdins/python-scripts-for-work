@@ -1,12 +1,3 @@
-# from PyInquirer import prompt
-# from prompt_toolkit import PromptSession
-# from prompt_toolkit.completion import WordCompleter
-# import prompt_engine
-# from prompt_toolkit.shortcuts import checkboxlist_dialog
-# from prompt_toolkit import PromptSession
-# from prompt_toolkit.completion import WordCompleter
-# from prompt_toolkit.validation import Validator
-
 from InquirerPy import prompt, inquirer
 from InquirerPy.utils import color_print
 import pandas as pd
@@ -15,35 +6,53 @@ import sys
 # TODO: come back and amend this
 # this will just have to match the 912 Reference, to be added as the importer
 # setup in CCT
-HBF_CUSTOMERS = [
-    'HBF912UK (912)',
-    'HBF914UK (914)'
-]
 
+# TODO:add some additional validation -
+# I do have a validation module but it's not finished
+
+# TODO: highlight if there are multiple currencies in worksheet
+
+# TODO: allow the user to go through each of the options
+# and amend any mistakes, or restart the process
+
+# TODO: if the columns don't exist, then notify the user and then move through the options
+
+# TODO: differentiate settings, between 912/914 and 3rd party as the headers are different
+# or look for both column headers, if the first one doesn't exist, look for the second
+
+# give an option, return the actual code
+HBF_CUSTOMERS = [
+    'HBF912UK',
+    'HBF914UK'
+]
 
 additional_header_data = {
     "interfaceVersion": "4.2",  # no additions needed # mandatory
     "customerIdCCT": "",
     "customerEmail": "mamer@als-cs.com",  # no additions needed # mandatory
     "customerReference": '',  # get this from the CLI
-    "deliveryTerm_SAD20": "",  # fetch this data from the worksheet after selection is made
-    # fetch this data from the worksheet - we can only pick one
-    "deliveryTermPlace_SAD20": "",
-    "countryOfExport_SAD15": "",  # pick the first?
-    "countryOfDestination_SAD17": "",  # pick the first?
+    "deliveryTerm_SAD20": "",  # PICK FIRST
+    "deliveryTermPlace_SAD20": "Dunkinfield",
+    "countryOfExport_SAD15": "DE",  # fill with generic data - DE
+    "countryOfDestination_SAD17": "GB",  # fill with generic data- GB
     "totalPackages_SAD06": "",  # sum of quantity in each line - sum this after the data
-    "purchaseCountry_SAD11": "",  # pick first? Mandatory field
+    "purchaseCountry_SAD11": "GB",  # pick first? Mandatory field
+
+    # optional?
     "totalAmountInvoiced_SAD22": "",
-    # highlight if there are multiple currencies in worksheet
     "totalAmountInvoicedCurrency_SAD22": ""
+
     # "totalGrossMass": 2914.0,  # sum of weight column - optional
 
 }
 
-
+# 912 / 914
 selected_columns = ["Plant Name", "Sales Order Nbr", "Incoterms", "10-Digit UK Import", "Number Pieces",
-                    "Qty Shipped Net Weight KG", "Customs Value", "Currency", "Country Of Origin",
+                    "Qty Shipped Net Weight KG", "Customs Value", "Currency", "Calendar Week", "Country Of Origin",
                     "General description", "Date Creation Record", "EORI Nbr"]
+
+# 912 3rd party
+
 
 address_data_table = {
     "Blois": ["FRHBFBLO01", "HB FULLER", "ALLEE ROBERT SCHUMAN C.S 1308", "BLOIS", "41013", "FR"],
@@ -105,10 +114,6 @@ def convert_df_to_json(df):
 
 def main(input_file):
     sheets = get_worksheets(input_file)
-    # excel_file = pd.ExcelFile()
-
-    # df = read_excel(input_file, sheets[])
-    # print(df.columns)
 
     sheet = inquirer.select(
         message="Select a sheet:",
@@ -125,7 +130,7 @@ def main(input_file):
         message='Please enter Reference [box 7]:'
     ).execute()
 
-    customer_list = inquirer.select(
+    customer = inquirer.select(
         message='Select a customer',
         choices=HBF_CUSTOMERS
     ).execute()
@@ -134,7 +139,7 @@ def main(input_file):
     df_remove_null = df.dropna(thresh=int(valid_row_threshold))
 
     additional_header_data['customerReference'] = user_input
-    additional_header_data['customerIdCCT'] = customer_list
+    additional_header_data['customerIdCCT'] = customer
 
     week_list = df['Calendar Week'].unique().tolist()
 
@@ -146,11 +151,16 @@ def main(input_file):
         choices=week_list
     ).execute()
 
-    incoterms = df['Incoterms'].unique().tolist()
+    df_subset = df_remove_null[selected_columns].copy()
+
+    # filter by week
+    df_subset_filtered = df_subset[df_subset['Calendar Week'] == float(
+        week_number)].copy()
+
+    incoterms = df_subset_filtered['Incoterms'].unique().tolist()
     incoterms = [str(incoterm)
                  for incoterm in incoterms if str(incoterm) != 'nan']
 
-    # this is quite confusing but it works.
     while True:
         selected_incoterms = []
 
@@ -184,40 +194,76 @@ def main(input_file):
             f"You've selected these incoterms: {selected_incoterms}. Do you want to proceed?",
         ).execute()
 
+        df_filtered = df_subset_filtered[df_subset_filtered['Incoterms'].isin(
+            selected_incoterms)].copy()
+
         # TODO: come back and add formatting style for all
         if done:
             # proceed with the rest of your code
-            print("You selected the following settings:")
-            print(f'Selected sheet: {sheet}')
-            print(
-                f"Minimum number of non-null values in a row: {valid_row_threshold}")
-            print(f'Reference [box 7]: {user_input}')
-            print(f'Week Number: {week_number}')
-            print(f'Incoterms: {selected_incoterms}')
 
-            inquirer.confirm(
+            color_print(formatted_text=[("class:bold", "You selected the following settings: ")], style={
+                "bold": "bold", })
+
+            color_print(formatted_text=[
+                        ("brown", "Selected sheet: "), ("blue bold", sheet)])
+
+            color_print(formatted_text=[
+                        ("brown", "Selected customer: "), ("blue bold", customer)])
+
+            color_print(formatted_text=[
+                        ("brown", "Minimum number of non-null values in a row: "), ("blue bold", valid_row_threshold)])
+            color_print(formatted_text=[
+                        ("brown", "Reference [box 7]: "), ("blue bold", user_input)])
+            color_print(formatted_text=[
+                        ("brown", "Week Number: "), ("blue bold", week_number)])
+
+            color_print(formatted_text=[
+                        ("brown", "Incoterms: "), ("blue bold", ', '.join(selected_incoterms))])
+
+            finalise = inquirer.confirm(
                 f"Do you want to proceed?",
             ).execute()
 
-            break
+            if finalise:
+                print(f"dataframe is {df_filtered}")
+                break
 
+            else:
+                # start again
+                pass
+
+    additional_header_data["deliveryTerm_SAD20"] = selected_incoterms[0]
+
+    # # this should be done after we have worked out which of the rows we're going to be using
+    # first, go through
+
+    import math
+
+    def round_up_and_convert(value):
+        if value == 0:
+            return 1
+        elif math.isclose(value, int(value)):
+            return int(value)
         else:
-            # If 'No' was selected, the outer loop will restart the selection process
-            # is there anythign to do here?
-            pass
+            return math.ceil(value)
 
-    #
-    # df_subset = df_remove_null[selected_columns].copy()
-    # processed_df = process_excel(df_subset)
+    df_filtered['Number Pieces'] = df_filtered['Number Pieces'].apply(
+        round_up_and_convert)
+
+    additional_header_data["totalPackages_SAD06"] = df_filtered['Number Pieces'].sum(
+    )
+
+    # sum of quantity in each line - sum this after the data
+    additional_header_data["totalAmountInvoiced_SAD22"] = df_filtered['Customs Value'].sum(
+    )
+
+    currency = df_filtered['Currency'].unique().tolist()
+
+    additional_header_data["totalAmountInvoicedCurrency_SAD22"] = currency[0]
+
+    processed_df = process_excel(df_subset)
 
     print(f"Succesfully processed json file")
-    # convert_df_to_json(processed_df)
-
-# allow the user to go through each of the options
-# and amend any mistakes.
-# TODO: print summary to user before confirmation>
-# I'll add this after the processing script is done. then
-# TODO: if the columns don't exist, then notify the user and then move through the options
 
 
 if __name__ == "__main__":
@@ -226,19 +272,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     main(sys.argv[1])
-
-# this should be the interface, and then the hb fuller processor should be a separate file
-
-# this preprocessor converts to the json file header
-# so it creates a dataframe with the specified headers
-# then the map to cct json file processes
-
-
-# TODO:
-#
-
-# additional header data
-# totalPackages_SAD06 - sum of total packages
 
 # #### Mandatory Header Data
 
@@ -324,62 +357,3 @@ if __name__ == "__main__":
 
 # basically if I can use this script for something else I should take out
 # reusable parts and add them elsewhere
-
-# TODO:add some additional validation -
-# I do have a validation module but it's not finished
-
-# check number of pieces are not in decimals
-
-# after processing is done, transmit the file to sftp server - separate script.
-
-# add this automatically based on the data we have
-# fetch EUR exchange rate based on HMRC data
-
-# the other thing is that we're assuming that someone is always going to use
-# the HBF preprocessor
-
-# from prompt_toolkit.shortcuts import get_input
-
-    # selected_incoterms = []
-    # for i, term in enumerate(incoterms, start=1):
-    #     print(f"{i}. {term}")
-
-    # while True:
-    #     for i, term in enumerate(incoterms, start=1):
-    #         print(f"{i}. {term}")
-    #         # print("Selected incoterms: ", selected_incoterms)
-
-    #     choice = get_input(
-    #         "Select an incoterm (by number), type 'q' to finish, or 's' to show selected: ")
-    #     print('Selected incoterms: ', selected_incoterms)
-    #     # if choice.lower() == 'q':
-    #     #     break
-    #     # elif choice.lower() == 's':
-    #     #     print("Selected incoterms: ", selected_incoterms)
-    #     #     continue
-
-    #     try:
-    #         selected_incoterms.append(incoterms[int(choice) - 1])
-    #         print("Added: ", incoterms[int(choice) - 1])
-    #     except (ValueError, IndexError):
-    #         print("Invalid choice, please try again.")
-
-    #     print("Selected incoterms: ", selected_incoterms)
-
-    # select by week
-    # Result is a list of selected items
-    # print(result)
-
-    # questions = [
-    #     {
-    #         'type': 'checkbox',
-    #         'name': 'incoterms',
-    #         'message': 'Select incoterms:',
-    #         'choices': [{'name': incoterm} for incoterm in incoterms],
-    #         'validate': lambda answer: 'You must select at least one incoterm.' if len(answer) == 0 else True
-    #     }
-    # ]
-
-    # answers = prompt(questions)
-
-    # print('Selected incoterms:', ', '.join(answers['incoterms']))
