@@ -1,10 +1,45 @@
 import math
 import sys
 from typing import List, Any
-
+import json
 from InquirerPy import prompt, inquirer
 from InquirerPy.utils import color_print
 import pandas as pd
+import numpy as np
+import pdb
+
+# This is more confusing now with the class based structure.
+# I have no idea what I'm looking at.
+
+
+# TODO: parse invoices for each line
+# TODO: add invoice address data
+
+# for each invoice - create an invoice object, if more than one item exists
+# for each invoice number - create
+
+# "invoices": [
+#       {
+#         "invoiceNo": "SI-A014216", # Sales Order Nbr
+#         "invoiceDate": "2022-11-16", # Date Creation Record
+#         "invoiceAmount": 27089.0, # Customs Value
+#         "invoiceCurrency": "EUR" # Currency
+#       }
+#     ]
+
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, pd.Timestamp):
+            return obj.isoformat()
+        else:
+            return super(NpEncoder, self).default(obj)
 
 
 class ExcelProcessor:
@@ -39,6 +74,60 @@ class ExcelProcessor:
         # "totalGrossMass": 2914.0,  # sum of weight column - optional
     }
 
+    # TODO: change the address data depending on the entity
+    header_address_data = [
+        {
+            "role": "CN",
+            "eoriNo": "GB570487130006",
+            "name1": "ALS Customs Services Dover Limited",
+            "street": "Lord Warden House, Lord Warden Square",
+            "zipcode": "CT17 9EQ",
+            "city": "Dover",
+            "country": "GB",
+            "province": "Kent"
+        },
+        {
+            "role": "CZ",
+            "eoriNo": "GB570487130006",
+            "name1": "ALS Customs Services Dover Limited",
+            "street": "Lord Warden House, Lord Warden Square",
+            "zipcode": "CT17 9EQ",
+            "city": "Dover",
+            "country": "GB",
+            "province": "Kent"
+        },
+        {
+            "role": "RE",
+            "eoriNo": "GB570487130006",
+            "name1": "ALS Customs Services Dover Limited",
+            "street": "Lord Warden House, Lord Warden Square",
+            "zipcode": "CT17 9EQ",
+            "city": "Dover",
+            "country": "GB",
+            "province": "Kent"
+        },
+        {
+            "role": "RI",
+            "eoriNo": "GB570487130006",
+            "name1": "ALS Customs Services Dover Limited",
+            "street": "Lord Warden House, Lord Warden Square",
+            "zipcode": "CT17 9EQ",
+            "city": "Dover",
+            "country": "GB",
+            "province": "Kent"
+        },
+        {
+            "role": "RT",
+            "eoriNo": "GB570487130006",
+            "name1": "ALS Customs Services Dover Limited",
+            "street": "Lord Warden House, Lord Warden Square",
+            "zipcode": "CT17 9EQ",
+            "city": "Dover",
+            "country": "GB",
+            "province": "Kent"
+        }
+    ]
+
     def __init__(self, input_file):
         self.input_file = input_file
         self.sheet = None
@@ -46,6 +135,7 @@ class ExcelProcessor:
         self.user_input = None
         self.customer = None
         self.df = None
+        self.df_filtered = None
         self.incoterms = None
         self.weeks = None
 
@@ -54,8 +144,12 @@ class ExcelProcessor:
         self.data_threshold()
         self.user_input_selection()
         self.customer_selection()
+
         self.process_data()
 
+        self.rename_df = self.prepare_df_for_json(self.df_filtered)
+
+        # print(rename_df)
         # Confirmation and proceeding
         proceed = self.confirm_and_proceed(self.selected_incoterms,
                                            self.sheet,
@@ -74,8 +168,33 @@ class ExcelProcessor:
 
     def post_confirmation_procedure(self):
         # continue with the rest of the pipeline after the confirmation step
-        print("processing...")
-        self.convert_df_to_json(self.df_filtered)
+        # print("processing...")
+        df_invoices = self.df_filtered.copy()
+
+        # print(df_invoices)
+
+        # TODO: come back here
+        drop_columns = ['customerHSCode_SAD33im', 'noOfPackages_SAD31', 'netMass_SAD38', 'countryOfOrigin_SAD34',
+                        'goodsDescription_SAD31', 'grossMass_SAD35', 'sequentialNo_SAD32']
+
+        # print(df_invoices.columns)
+
+        for col in drop_columns:
+            try:
+                df_invoices.drop([col], inplace=True, axis=1)
+            except KeyError:
+                print(f"Unable to drop column: {col}")
+
+        df_invoices.rename(columns={
+            "Sales Order Nbr": "invoiceNo",
+            "Date Creation Record": "invoiceDate",
+            "itemPrice_SAD42": "invoiceAmount",
+            "goodsValueCurrency": "invoiceCurrency"
+        }, inplace=True)
+
+        self.invoices = df_invoices.to_dict('records')
+        # pdb.set_trace()
+        self.convert_df_to_json()
         print("Successfully processed json file")
 
     def sheet_selection(self):
@@ -95,8 +214,58 @@ class ExcelProcessor:
         self.customer = self.get_input(
             'Select a customer:', choices=self.HBF_CUSTOMERS)
 
+    def create_customs_order_dict(self):
+        # print(self.df_filtered)
+        positions = self.df_filtered.astype('object').where(
+            pd.notnull(self.df_filtered), None)
+        return {
+            "CustomsOrder": {
+                **self.additional_header_data,
+                "addresses": self.header_address_data,
+                "positions": positions.to_dict(orient='records'),
+                "invoice": self.invoices
+            }
+        }
+
+    def prepare_df_for_json(self, df):
+        self.df_filtered.insert(0, 'sequentialNo_SAD32',
+                                range(1, len(self.df_filtered) + 1))
+        self.df_filtered.rename(columns={
+            "Currency": "goodsValueCurrency",
+            "General description": "goodsDescription_SAD31",
+            "Qty Shipped Net Weight KG": "netMass_SAD38",
+            "Number Pieces": "noOfPackages_SAD31",
+            "10-Digit UK Import": "customerHSCode_SAD33im",
+            "Customs Value": "itemPrice_SAD42",
+            "Country Of Origin": "countryOfOrigin_SAD34",
+            "Sales Order Nbr": "invoiceNo"}, inplace=True)
+
+        self.df_filtered['grossMass_SAD35'] = self.df_filtered['netMass_SAD38']
+
+        # change types of columns
+        self.df_filtered['invoiceNo'] = df['invoiceNo'].astype(
+            'int').astype('str')
+        self.df_filtered['customerHSCode_SAD33im'] = df['customerHSCode_SAD33im'].astype(
+            'int').astype('str')
+
+        self.df_filtered['Date Creation Record'] = pd.to_datetime(
+            df['Date Creation Record']).dt.strftime('%Y-%m-%d')
+
+        drop_columns = ["Plant Name", "Incoterms",
+                        "Calendar Week", "EORI Nbr"]
+
+        for col in drop_columns:
+            try:
+                self.df_filtered.drop([col], inplace=True, axis=1)
+            except KeyError:
+                print(f"Unable to drop column: {col}")
+
+        self.df_filtered = self.df_filtered
+
     def convert_df_to_json(self):
-        self.df.to_json('output.json', orient='records', lines=True)
+        customs_order_dict = self.create_customs_order_dict()
+        with open('output.json', 'w') as f:
+            json.dump(customs_order_dict, f, cls=NpEncoder)
 
     def process_data(self):
         self.df = pd.read_excel(
@@ -121,20 +290,22 @@ class ExcelProcessor:
 
         self.selected_incoterms = self.incoterm_selection(incoterms)
 
+        self.additional_header_data['deliveryTerm_SAD20'] = self.selected_incoterms[0]
+
         self.df_filtered = self.df[self.df['Incoterms'].isin(
             self.selected_incoterms)]
 
-        self.df['Number Pieces'] = self.df['Number Pieces'].apply(
+        self.df_filtered['Number Pieces'] = self.df_filtered['Number Pieces'].apply(
             self.round_up_and_convert)
 
-        self.additional_header_data["totalPackages_SAD06"] = self.df['Number Pieces'].sum(
+        self.additional_header_data["totalPackages_SAD06"] = self.df_filtered['Number Pieces'].sum(
         )
-        self.additional_header_data["totalAmountInvoiced_SAD22"] = self.df['Customs Value'].sum(
+        self.additional_header_data["totalAmountInvoiced_SAD22"] = self.df_filtered['Customs Value'].sum(
         )
-        self.additional_header_data["totalAmountInvoicedCurrency_SAD22"] = self.df['Currency'].unique().tolist()[
+        self.additional_header_data["totalAmountInvoicedCurrency_SAD22"] = self.df_filtered['Currency'].unique().tolist()[
             0]
 
-        self.df = self.df
+        self.df_filtered = self.df_filtered
 
     def incoterm_selection(self, incoterms):
         while True:
@@ -236,12 +407,9 @@ class ExcelProcessor:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Please provide the path to the Excel file as a command line argument.")
+        print("format: python hb_fuller_preprocessor <excel workbook>")
         sys.exit(1)
 
     file_path = sys.argv[1]
     processor = ExcelProcessor(file_path)
     processor.run()
-
-# todo: submit to CCT
-# setup SFTP details - I'm almost there.
