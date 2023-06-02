@@ -3,6 +3,9 @@ from InquirerPy.utils import color_print
 import pandas as pd
 import sys
 
+
+#  TODO: capitalise reference
+
 # TODO: come back and amend this
 # this will just have to match the 912 Reference, to be added as the importer
 # setup in CCT
@@ -264,6 +267,7 @@ def main(input_file):
     processed_df = process_excel(df_subset)
 
     print(f"Succesfully processed json file")
+    convert_df_to_json(processed_df)
 
 
 if __name__ == "__main__":
