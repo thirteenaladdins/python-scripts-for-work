@@ -2,6 +2,10 @@ pyvenv.cfg
 Scripts/
 Lib/
 
+lib
+lib64
+include
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

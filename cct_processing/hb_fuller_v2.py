@@ -15,19 +15,6 @@ import pdb
 # TODO: parse invoices for each line
 # TODO: add invoice address data
 
-# for each invoice - create an invoice object, if more than one item exists
-# for each invoice number - create
-
-# "invoices": [
-#       {
-#         "invoiceNo": "SI-A014216", # Sales Order Nbr
-#         "invoiceDate": "2022-11-16", # Date Creation Record
-#         "invoiceAmount": 27089.0, # Customs Value
-#         "invoiceCurrency": "EUR" # Currency
-#       }
-#     ]
-
-
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
